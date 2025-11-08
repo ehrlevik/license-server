@@ -1,0 +1,16 @@
+{
+  "licenses": {
+    "EHRLEVIK": {
+      "active": true,
+      "hwid": "any"
+    },
+    "8F3D7G2H5J9K4M": {
+      "active": true,
+      "hwid": "any"
+    },
+    "TEST123": {
+      "active": false,
+      "hwid": "any"
+    }
+  }
+}

@@ -1,101 +1,14 @@
 {
   "licenses": {
-    "EHRLEVIK": {
+    "Ehrlevik": {
       "active": true,
-      "hwid": "any"
+      "customer": "Admin",
+      "created": "2024-01-15"
     },
     "8F3D7G2H5J9K4M": {
       "active": true,
-      "hwid": "any"
-    },
-    "4M6N8P1Q3R5T7V": {
-      "active": true,
-      "hwid": "any"
-    },
-    "9V2X4Z6B8C1D3F": {
-      "active": true,
-      "hwid": "any"
-    },
-    "7F5G3H1J9K2L4N": {
-      "active": true,
-      "hwid": "any"
-    },
-    "8N4P6Q2R4T8V1X": {
-      "active": true,
-      "hwid": "any"
-    },
-    "3X5Z7B9C1D3F5G": {
-      "active": true,
-      "hwid": "any"
-    },
-    "6H8J1K3L5M7N9P": {
-      "active": true,
-      "hwid": "any"
-    },
-    "9P2Q4R6T8V1X3Z": {
-      "active": true,
-      "hwid": "any"
-    },
-    "5Z7B9C2D4F6G8H": {
-      "active": true,
-      "hwid": "any"
-    },
-    "8H1J3K5L7M9N2P": {
-      "active": true,
-      "hwid": "any"
-    },
-    "2Q4R6T8V2X4Z6B": {
-      "active": true,
-      "hwid": "any"
-    },
-    "7B9C1D3F5G7H9J": {
-      "active": true,
-      "hwid": "any"
-    },
-    "4J6K8L1M3N5P7Q": {
-      "active": true,
-      "hwid": "any"
-    },
-    "9R2T4V6X8Z1B3C": {
-      "active": true,
-      "hwid": "any"
-    },
-    "3C5D7F9G2H4J6K": {
-      "active": true,
-      "hwid": "any"
-    },
-    "6K8L1M3N5P7Q9R": {
-      "active": true,
-      "hwid": "any"
-    },
-    "2T4V6X8Z1B3D5F": {
-      "active": true,
-      "hwid": "any"
-    },
-    "7G9H2J4K6L8M1N": {
-      "active": true,
-      "hwid": "any"
-    },
-    "4P6Q8R1T3V5X7Z": {
-      "active": true,
-      "hwid": "any"
-    },
-    "9B2D4F6H8J1K3L": {
-      "active": true,
-      "hwid": "any"
-    },
-    "5M7N9P2Q4R6T8V": {
-      "active": true,
-      "hwid": "any"
-    },
-    "1X3Z5B7D9F2H4J": {
-      "active": true,
-      "hwid": "any"
-    },
-    "TEST123": {
-      "active": false,
-      "hwid": "any"
+      "customer": "IgorPuz",
+      "created": "2024-01-15"
     }
   }
 }
-

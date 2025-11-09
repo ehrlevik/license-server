@@ -27,17 +27,21 @@
         .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 10px; }
         .badge-lifetime { background: #ff6b00; color: white; }
         .badge-trial { background: #17a2b8; color: white; }
+        .github-status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .github-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .github-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🛡️ System Zarządzania Licencjami</h1>
-        <p>Uwaga: Ten panel działa lokalnie. Licencje są zapisywane w przeglądarce.</p>
+        <p>Uwaga: Ten panel zapisuje licencje lokalnie i automatycznie aktualizuje GitHub.</p>
         
         <div class="tabs">
             <button class="tab active" onclick="switchTab('generator')">Generator</button>
             <button class="tab" onclick="switchTab('panel')">Panel Licencji</button>
             <button class="tab" onclick="switchTab('verify')">Weryfikacja</button>
+            <button class="tab" onclick="switchTab('github')">GitHub Sync</button>
         </div>
 
         <!-- Generator Licencji -->
@@ -66,6 +70,7 @@
         <div id="panel" class="tab-content">
             <h2>📊 Zarządzanie Licencjami</h2>
             <button onclick="loadLicenses()">🔄 Odśwież</button>
+            <button onclick="syncToGitHub()" style="background: #28a745;">📤 Sync z GitHub</button>
             <div id="licensesList"></div>
         </div>
 
@@ -78,6 +83,20 @@
             </div>
             <button onclick="verifyLicense()">✅ Zweryfikuj</button>
             <div id="verifyResult"></div>
+        </div>
+
+        <!-- GitHub Sync -->
+        <div id="github" class="tab-content">
+            <h2>🔄 Synchronizacja z GitHub</h2>
+            <div class="form-group">
+                <label>GitHub Personal Access Token:</label>
+                <input type="password" id="githubToken" placeholder="Wprowadź GitHub PAT">
+                <small>Potrzebne uprawnienia: repo, workflow</small>
+            </div>
+            <button onclick="testGitHubConnection()">🔗 Testuj połączenie</button>
+            <button onclick="syncToGitHub()" style="background: #28a745;">📤 Wyślij do GitHub</button>
+            <button onclick="loadFromGitHub()" style="background: #17a2b8;">📥 Pobierz z GitHub</button>
+            <div id="githubStatus"></div>
         </div>
     </div>
 
@@ -92,6 +111,140 @@
             event.target.classList.add('active');
             
             if (tabName === 'panel') loadLicenses();
+        }
+
+        // Funkcja do zapisywania licencji do GitHub
+        async function syncToGitHub() {
+            const token = document.getElementById('githubToken')?.value || localStorage.getItem('githubToken');
+            
+            if (!token) {
+                showGitHubStatus('❌ Wprowadź GitHub Personal Access Token', 'error');
+                return;
+            }
+
+            showGitHubStatus('📤 Wysyłanie licencji do GitHub...', 'info');
+
+            try {
+                // Najpierw pobierz aktualną listę z GitHub
+                const response = await fetch('https://api.github.com/repos/ehrlevik/license-server/contents/licenses.json', {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                let currentContent = [];
+                let sha = null;
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentContent = JSON.parse(atob(data.content));
+                    sha = data.sha;
+                }
+
+                // Połącz lokalne licencje z tymi z GitHub
+                const mergedLicenses = mergeLicenses(currentContent, licenses);
+                
+                // Zapisz z powrotem do GitHub
+                const updateResponse = await fetch('https://api.github.com/repos/ehrlevik/license-server/contents/licenses.json', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Auto-sync licenses: ${new Date().toISOString()}`,
+                        content: btoa(JSON.stringify(mergedLicenses, null, 2)),
+                        sha: sha
+                    })
+                });
+
+                if (updateResponse.ok) {
+                    showGitHubStatus('✅ Licencje zsynchronizowane z GitHub!', 'success');
+                    // Zapisz token lokalnie
+                    localStorage.setItem('githubToken', token);
+                } else {
+                    const error = await updateResponse.json();
+                    showGitHubStatus(`❌ Błąd synchronizacji: ${error.message}`, 'error');
+                }
+            } catch (error) {
+                showGitHubStatus(`❌ Błąd: ${error.message}`, 'error');
+            }
+        }
+
+        // Funkcja do łączenia licencji
+        function mergeLicenses(githubLicenses, localLicenses) {
+            const merged = [...githubLicenses];
+            
+            localLicenses.forEach(localLicense => {
+                const existingIndex = merged.findIndex(lic => lic.key === localLicense.key);
+                if (existingIndex === -1) {
+                    // Nowa licencja - dodaj
+                    merged.push(localLicense);
+                } else {
+                    // Aktualizuj istniejącą licencję
+                    merged[existingIndex] = localLicense;
+                }
+            });
+            
+            return merged;
+        }
+
+        // Funkcja do pobierania licencji z GitHub
+        async function loadFromGitHub() {
+            showGitHubStatus('📥 Pobieranie licencji z GitHub...', 'info');
+
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/ehrlevik/license-server/main/licenses.json');
+                
+                if (response.ok) {
+                    const githubLicenses = await response.json();
+                    licenses = githubLicenses;
+                    localStorage.setItem('licenses', JSON.stringify(licenses));
+                    showGitHubStatus('✅ Pobrano licencje z GitHub!', 'success');
+                    loadLicenses();
+                } else {
+                    showGitHubStatus('❌ Błąd pobierania z GitHub', 'error');
+                }
+            } catch (error) {
+                showGitHubStatus(`❌ Błąd: ${error.message}`, 'error');
+            }
+        }
+
+        // Testowanie połączenia z GitHub
+        async function testGitHubConnection() {
+            const token = document.getElementById('githubToken')?.value;
+            
+            if (!token) {
+                showGitHubStatus('❌ Wprowadź GitHub Token', 'error');
+                return;
+            }
+
+            showGitHubStatus('🔗 Testowanie połączenia...', 'info');
+
+            try {
+                const response = await fetch('https://api.github.com/user', {
+                    headers: {
+                        'Authorization': `token ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    showGitHubStatus(`✅ Połączenie OK! Witaj ${userData.login}`, 'success');
+                    localStorage.setItem('githubToken', token);
+                } else {
+                    showGitHubStatus('❌ Błędny token', 'error');
+                }
+            } catch (error) {
+                showGitHubStatus(`❌ Błąd: ${error.message}`, 'error');
+            }
+        }
+
+        function showGitHubStatus(message, type) {
+            const statusDiv = document.getElementById('githubStatus');
+            statusDiv.innerHTML = `<div class="github-status github-${type}">${message}</div>`;
         }
 
         function generateLicense() {
@@ -130,6 +283,7 @@
                     <p><strong>Typ:</strong> ${getLicenseTypeName(licenseType)}</p>
                     <p><strong>Ważna do:</strong> ${expirationDate}</p>
                     <button onclick="copyLicense()">📋 Kopiuj klucz</button>
+                    <button onclick="syncToGitHub()" style="background: #28a745;">📤 Wyślij do GitHub</button>
                 </div>
             `;
 
@@ -203,7 +357,7 @@
         }
 
         function deactivateLicense(key) {
-            if (confirm('Dezaktywować licencję? Klient zobaczy komunikat w CMD.')) {
+            if (confirm('Dezaktywować licencję?')) {
                 const license = licenses.find(l => l.key === key);
                 if (license) license.status = 'deactivated';
                 localStorage.setItem('licenses', JSON.stringify(licenses));
@@ -286,6 +440,12 @@
 
         // Inicjalizacja
         loadLicenses();
+        
+        // Spróbuj załadować token z localStorage
+        const savedToken = localStorage.getItem('githubToken');
+        if (savedToken && document.getElementById('githubToken')) {
+            document.getElementById('githubToken').value = savedToken;
+        }
     </script>
 </body>
 </html>

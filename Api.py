@@ -2,19 +2,21 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import os
 from datetime import datetime
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
-# Plik do przechowywania licencji
+# Konfiguracja
 LICENSE_FILE = 'licenses.json'
+HOST = '0.0.0.0'
+PORT = 5000
 
 def load_licenses():
     """Ładuje licencje z pliku JSON"""
-    if os.path.exists(LICENSE_FILE):
-        try:
+    try:
+        if os.path.exists(LICENSE_FILE):
             with open(LICENSE_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
-            return []
+    except Exception as e:
+        print(f"Błąd ładowania licencji: {e}")
     return []
 
 def save_licenses(licenses):
@@ -23,7 +25,8 @@ def save_licenses(licenses):
         with open(LICENSE_FILE, 'w', encoding='utf-8') as f:
             json.dump(licenses, f, ensure_ascii=False, indent=2)
         return True
-    except:
+    except Exception as e:
+        print(f"Błąd zapisywania licencji: {e}")
         return False
 
 class LicenseHandler(BaseHTTPRequestHandler):
@@ -95,20 +98,51 @@ class LicenseHandler(BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps(response).encode('utf-8'))
-        else:
-            self.send_response(404)
+    
+    def do_PUT(self):
+        """Obsługa żądań PUT - aktualizacja licencji"""
+        parsed_path = urlparse(self.path)
+        
+        if parsed_path.path.startswith('/api/licenses/'):
+            try:
+                license_key = parsed_path.path.split('/')[-1]
+                content_length = int(self.headers['Content-Length'])
+                put_data = self.rfile.read(content_length)
+                update_data = json.loads(put_data.decode('utf-8'))
+                
+                licenses = load_licenses()
+                license_index = next((i for i, l in enumerate(licenses) if l.get('key') == license_key), -1)
+                
+                if license_index == -1:
+                    response = {'error': 'Licencja nie znaleziona'}
+                    self.send_response(404)
+                else:
+                    # Aktualizuj licencję
+                    if 'status' in update_data:
+                        licenses[license_index]['status'] = update_data['status']
+                    
+                    if save_licenses(licenses):
+                        response = {'message': 'Licencja zaktualizowana pomyślnie'}
+                        self.send_response(200)
+                    else:
+                        response = {'error': 'Błąd zapisu licencji'}
+                        self.send_response(500)
+                        
+            except Exception as e:
+                response = {'error': f'Błąd przetwarzania: {str(e)}'}
+                self.send_response(400)
+            
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
     
     def verify_license(self, license_key):
         """Weryfikuje licencję"""
         licenses = load_licenses()
         
         # Znajdź licencję
-        license_data = None
-        for l in licenses:
-            if l.get('key') == license_key:
-                license_data = l
-                break
+        license_data = next((l for l in licenses if l.get('key') == license_key), None)
         
         if not license_data:
             return {
@@ -166,15 +200,16 @@ class LicenseHandler(BaseHTTPRequestHandler):
 def run_server():
     """Uruchamia serwer"""
     try:
-        server = HTTPServer(('localhost', 5000), LicenseHandler)
+        server = HTTPServer((HOST, PORT), LicenseHandler)
         print("=" * 60)
         print("🚀 SERWER LICENCJI URUCHOMIONY")
         print("=" * 60)
-        print("📡 Adres: http://localhost:5000")
+        print(f"📡 Adres: http://{HOST}:{PORT}")
         print("🔗 Dostępne endpointy:")
         print("   GET  /api/verify/<klucz>  - Weryfikuj licencję")
         print("   GET  /api/licenses        - Pobierz wszystkie licencje")
         print("   POST /api/licenses        - Dodaj nową licencję")
+        print("   PUT  /api/licenses/<key>  - Aktualizuj licencję")
         print("")
         print("⏹️  Naciśnij Ctrl+C aby zatrzymać serwer")
         print("=" * 60)
@@ -185,7 +220,6 @@ def run_server():
         server.server_close()
     except Exception as e:
         print(f"❌ Błąd uruchamiania serwera: {e}")
-        print("💡 Sprawdź czy port 5000 nie jest zajęty")
 
 if __name__ == '__main__':
     # Utwórz plik licencji jeśli nie istnieje

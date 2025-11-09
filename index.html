@@ -19,10 +19,14 @@
         button { background: #007bff; color: white; border: none; cursor: pointer; margin-top: 10px; }
         button:hover { background: #0056b3; }
         .license-card { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #28a745; }
+        .license-card.lifetime { border-left-color: #ff6b00; background: #fff3e0; }
         .license-card.deactivated { border-left-color: #dc3545; opacity: 0.7; }
         .license-key { font-family: monospace; background: white; padding: 5px; border-radius: 3px; margin: 5px 0; }
         .success { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0; }
         .error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        .badge-lifetime { background: #ff6b00; color: white; }
+        .badge-trial { background: #17a2b8; color: white; }
     </style>
 </head>
 <body>
@@ -53,6 +57,7 @@
                     <option value="trial">Trial (30 dni)</option>
                     <option value="basic">Basic (1 rok)</option>
                     <option value="professional">Professional (2 lata)</option>
+                    <option value="lifetime">Lifetime (dożywotnia) ⭐</option>
                 </select>
             </div>
             <button onclick="generateLicense()">🚀 Wygeneruj Licencję</button>
@@ -124,6 +129,7 @@
                     <div class="license-key">${licenseKey}</div>
                     <p><strong>Produkt:</strong> ${productName}</p>
                     <p><strong>Klient:</strong> ${customerName}</p>
+                    <p><strong>Typ:</strong> ${getLicenseTypeName(licenseType)}</p>
                     <p><strong>Ważna do:</strong> ${expirationDate}</p>
                     <button onclick="copyLicense()">📋 Kopiuj klucz</button>
                 </div>
@@ -145,6 +151,10 @@
         }
 
         function getExpirationDate(licenseType) {
+            if (licenseType === 'lifetime') {
+                return 'NIEKOŃCZĄCA SIĘ';
+            }
+            
             const today = new Date();
             let expiration = new Date();
             switch(licenseType) {
@@ -155,6 +165,22 @@
             return expiration.toISOString().split('T')[0];
         }
 
+        function getLicenseTypeName(licenseType) {
+            const names = {
+                'trial': 'Trial (30 dni)',
+                'basic': 'Basic (1 rok)',
+                'professional': 'Professional (2 lata)',
+                'lifetime': 'Lifetime (dożywotnia) ⭐'
+            };
+            return names[licenseType] || licenseType;
+        }
+
+        function getLicenseBadge(licenseType) {
+            if (licenseType === 'lifetime') return '<span class="badge badge-lifetime">LIFETIME</span>';
+            if (licenseType === 'trial') return '<span class="badge badge-trial">TRIAL</span>';
+            return '';
+        }
+
         function loadLicenses() {
             const container = document.getElementById('licensesList');
             if (licenses.length === 0) {
@@ -163,10 +189,11 @@
             }
 
             container.innerHTML = licenses.map(license => `
-                <div class="license-card ${license.status === 'deactivated' ? 'deactivated' : ''}">
-                    <h3>${license.product}</h3>
+                <div class="license-card ${license.type === 'lifetime' ? 'lifetime' : ''} ${license.status === 'deactivated' ? 'deactivated' : ''}">
+                    <h3>${license.product} ${getLicenseBadge(license.type)}</h3>
                     <p><strong>Klient:</strong> ${license.customer}</p>
                     <div class="license-key">${license.key}</div>
+                    <p><strong>Typ:</strong> ${getLicenseTypeName(license.type)}</p>
                     <p><strong>Status:</strong> ${license.status}</p>
                     <p><strong>Wygasa:</strong> ${license.expirationDate}</p>
                     <div style="margin-top: 10px;">
@@ -218,7 +245,7 @@
                 return;
             }
 
-            const isExpired = new Date(license.expirationDate) < new Date();
+            const isExpired = license.type !== 'lifetime' && new Date(license.expirationDate) < new Date();
 
             if (license.status === 'deactivated') {
                 resultDiv.innerHTML = `
@@ -231,12 +258,13 @@
             } else if (isExpired) {
                 resultDiv.innerHTML = `<div class="error">⚠️ Licencja wygasła</div>`;
             } else {
+                const lifetimeBadge = license.type === 'lifetime' ? '⭐ LIFETIME LICENSE ⭐' : '';
                 resultDiv.innerHTML = `
                     <div class="success">
-                        ✅ LICENCJA POPRAWNA<br>
+                        ✅ LICENCJA POPRAWNA ${lifetimeBadge}<br>
                         📦 ${license.product}<br>
                         👤 ${license.customer}<br>
-                        📅 Ważna do: ${license.expirationDate}
+                        📅 ${license.type === 'lifetime' ? 'DOŻYWOTNIA' : 'Ważna do: ' + license.expirationDate}
                     </div>
                 `;
             }

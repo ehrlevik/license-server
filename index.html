@@ -3,449 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Licencji - Panel Administracyjny</title>
+    <title>Generator Licencji - Boty AFK</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .tabs { display: flex; margin-bottom: 20px; }
-        .tab { padding: 10px 20px; background: #ddd; border: none; cursor: pointer; margin-right: 5px; }
-        .tab.active { background: #007bff; color: white; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #2c3e50; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        .card { background: #2d3748; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; font-weight: bold; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #34495e; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #4a5568; }
+        th { background: #2c5282; }
+        .status-active { color: #68d391; font-weight: bold; }
+        .status-inactive { color: #fc8181; font-weight: bold; }
         .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select, button { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #0056b3; }
-        .license-card { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #28a745; }
-        .license-card.lifetime { border-left-color: #ff6b00; background: #fff3e0; }
-        .license-card.deactivated { border-left-color: #dc3545; opacity: 0.7; }
-        .license-key { font-family: monospace; background: white; padding: 5px; border-radius: 3px; margin: 5px 0; }
-        .success { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0; }
-        .error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin: 10px 0; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 10px; }
-        .badge-lifetime { background: #ff6b00; color: white; }
-        .badge-trial { background: #17a2b8; color: white; }
-        .github-status { padding: 10px; border-radius: 5px; margin: 10px 0; }
-        .github-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .github-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #a0aec0; }
+        input, select { width: 100%; padding: 10px; background: #4a5568; border: 1px solid #718096; border-radius: 5px; color: white; }
+        .license-key { font-family: monospace; background: #1a202c; padding: 10px; border-radius: 5px; margin: 10px 0; font-size: 16px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
+        .modal-content { background: #2d3748; margin: 10% auto; padding: 20px; width: 500px; border-radius: 10px; }
+        .actions-column { display: flex; flex-direction: column; gap: 5px; }
+        .actions-column .btn { margin: 2px 0; }
+        .notification { padding: 10px; margin: 10px 0; border-radius: 5px; display: none; }
+        .notification.success { background: #27ae60; }
+        .notification.error { background: #e74c3c; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🛡️ System Zarządzania Licencjami</h1>
-        <p>Uwaga: Ten panel zapisuje licencje lokalnie i automatycznie aktualizuje GitHub.</p>
-        
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('generator')">Generator</button>
-            <button class="tab" onclick="switchTab('panel')">Panel Licencji</button>
-            <button class="tab" onclick="switchTab('verify')">Weryfikacja</button>
-            <button class="tab" onclick="switchTab('github')">GitHub Sync</button>
+        <div class="header">
+            <h1>Generator Licencji - Boty AFK</h1>
+            <p>Twórz i zarządzaj licencjami dla swoich botów</p>
         </div>
 
-        <!-- Generator Licencji -->
-        <div id="generator" class="tab-content active">
-            <h2>🎯 Generator Licencji</h2>
-            <div class="form-group">
-                <label>Nazwa produktu:</label>
-                <input type="text" id="productName" placeholder="Nazwa produktu">
-            </div>
-            <div class="form-group">
-                <label>Klient:</label>
-                <input type="text" id="customerName" placeholder="Nazwa klienta">
-            </div>
-            <div class="form-group">
-                <label>Typ licencji:</label>
-                <select id="licenseType">
-                    <option value="trial">Trial (30 dni)</option>
-                    <option value="lifetime">Lifetime (dożywotnia) ⭐</option>
-                </select>
-            </div>
-            <button onclick="generateLicense()">🚀 Wygeneruj Licencję</button>
-            <div id="licenseResult"></div>
+        <div class="notification" id="notification"></div>
+
+        <div class="card">
+            <h2>Utwórz Nową Licencję</h2>
+            <form id="createLicenseForm">
+                <div class="form-group">
+                    <label>Typ licencji:</label>
+                    <select id="licenseType" required>
+                        <option value="14dni">14 dni</option>
+                        <option value="30dni" selected>30 dni</option>
+                        <option value="lifetime">Lifetime</option>
+                    </select>
+                </div>
+                
+                <!-- Ukryte pola wymagane przez backend -->
+                <div class="form-group hidden">
+                    <label>Imię klienta:</label>
+                    <input type="text" id="customerName" value="Nie podano" required>
+                </div>
+                <div class="form-group hidden">
+                    <label>Email klienta:</label>
+                    <input type="email" id="customerEmail" value="niepodano@example.com" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Utwórz Licencję</button>
+            </form>
         </div>
 
-        <!-- Panel Licencji -->
-        <div id="panel" class="tab-content">
-            <h2>📊 Zarządzanie Licencjami</h2>
-            <button onclick="loadLicenses()">🔄 Odśwież</button>
-            <button onclick="syncToGitHub()" style="background: #28a745;">📤 Sync z GitHub</button>
-            <div id="licensesList"></div>
+        <div class="card">
+            <h2>Lista Licencji</h2>
+            <div id="loading">Ładowanie licencji...</div>
+            <table id="licensesTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Klucz Licencji</th>
+                        <th>Typ</th>
+                        <th>Status</th>
+                        <th>Data Aktywacji</th>
+                        <th>Ostatnie Sprawdzenie</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody id="licensesTableBody"></tbody>
+            </table>
         </div>
+    </div>
 
-        <!-- Weryfikacja -->
-        <div id="verify" class="tab-content">
-            <h2>🔍 Weryfikacja Licencji</h2>
-            <div class="form-group">
-                <label>Klucz licencji:</label>
-                <input type="text" id="verifyKey" placeholder="Wprowadź klucz licencji">
+    <!-- Modal do dezaktywacji -->
+    <div id="deactivateModal" class="modal">
+        <div class="modal-content">
+            <h3>Dezaktywuj Licencję</h3>
+            <p>Podaj powód dezaktywacji:</p>
+            <input type="text" id="deactivationReason" placeholder="np. Klient nie zapłacił...">
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn btn-warning" onclick="closeModal()">Anuluj</button>
+                <button class="btn btn-danger" onclick="confirmDeactivate()">Dezaktywuj</button>
             </div>
-            <button onclick="verifyLicense()">✅ Zweryfikuj</button>
-            <div id="verifyResult"></div>
-        </div>
-
-        <!-- GitHub Sync -->
-        <div id="github" class="tab-content">
-            <h2>🔄 Synchronizacja z GitHub</h2>
-            <div class="form-group">
-                <label>GitHub Personal Access Token:</label>
-                <input type="password" id="githubToken" placeholder="Wprowadź GitHub PAT">
-                <small>Potrzebne uprawnienia: repo, workflow</small>
-            </div>
-            <button onclick="testGitHubConnection()">🔗 Testuj połączenie</button>
-            <button onclick="syncToGitHub()" style="background: #28a745;">📤 Wyślij do GitHub</button>
-            <button onclick="loadFromGitHub()" style="background: #17a2b8;">📥 Pobierz z GitHub</button>
-            <div id="githubStatus"></div>
         </div>
     </div>
 
     <script>
-        let licenses = JSON.parse(localStorage.getItem('licenses')) || [];
-        let currentLicense = null;
+        let currentLicenseKey = null;
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+        // Funkcja do wyświetlania powiadomień
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
             
-            if (tabName === 'panel') loadLicenses();
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
         }
 
-        // Funkcja do zapisywania licencji do GitHub
-        async function syncToGitHub() {
-            const token = document.getElementById('githubToken')?.value || localStorage.getItem('githubToken');
+        // Ładowanie licencji
+        function loadLicenses() {
+            fetch('/api/licenses')
+                .then(response => response.json())
+                .then(licenses => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('licensesTable').style.display = 'table';
+                    
+                    const tbody = document.getElementById('licensesTableBody');
+                    tbody.innerHTML = '';
+                    
+                    licenses.forEach(license => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><strong class="license-key">${license.license_key}</strong></td>
+                            <td>${license.type} (${license.days === 9999 ? 'Lifetime' : license.days + ' dni'})</td>
+                            <td class="${license.active ? 'status-active' : 'status-inactive'}">
+                                ${license.active ? 'AKTYWNA' : 'DEZAKTYWOWANA'}
+                            </td>
+                            <td>${license.activated_at ? new Date(license.activated_at).toLocaleDateString('pl-PL') : 'Nieaktywowana'}</td>
+                            <td>${license.last_check ? new Date(license.last_check).toLocaleString('pl-PL') : 'Nigdy'}</td>
+                            <td>
+                                <div class="actions-column">
+                                    <button class="btn btn-info" onclick="copyLicenseKey('${license.license_key}')">Skopiuj klucz</button>
+                                    ${license.active ? 
+                                        `<button class="btn btn-warning" onclick="openDeactivateModal('${license.license_key}')">Dezaktywuj</button>` :
+                                        `<button class="btn btn-success" onclick="activateLicense('${license.license_key}')">Aktywuj</button>`
+                                    }
+                                    <button class="btn btn-danger" onclick="deleteLicense('${license.license_key}')">Usuń</button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Błąd ładowania licencji:', error);
+                    document.getElementById('loading').innerHTML = 'Błąd ładowania danych';
+                });
+        }
+
+        // Kopiowanie klucza licencji
+        function copyLicenseKey(licenseKey) {
+            navigator.clipboard.writeText(licenseKey)
+                .then(() => {
+                    showNotification('Klucz licencji skopiowany do schowka', 'success');
+                })
+                .catch(err => {
+                    console.error('Błąd kopiowania: ', err);
+                    showNotification('Błąd kopiowania klucza', 'error');
+                });
+        }
+
+        // Tworzenie nowej licencji
+        document.getElementById('createLicenseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            if (!token) {
-                showGitHubStatus('❌ Wprowadź GitHub Personal Access Token', 'error');
+            const type = document.getElementById('licenseType').value;
+            const customerName = document.getElementById('customerName').value;
+            const customerEmail = document.getElementById('customerEmail').value;
+            
+            // Mapowanie typu na dni - POPRAWIONE
+            const daysMap = {
+                '14dni': 14,
+                '30dni': 30,
+                'lifetime': 9999
+            };
+            
+            // Sprawdź czy wszystkie pola są wypełnione
+            if (!type || !customerName || !customerEmail) {
+                showNotification('Wszystkie pola są wymagane', 'error');
                 return;
             }
-
-            showGitHubStatus('📤 Wysyłanie licencji do GitHub...', 'info');
-
-            try {
-                // Najpierw pobierz aktualną listę z GitHub
-                const response = await fetch('https://api.github.com/repos/ehrlevik/license-server/contents/licenses.json', {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-
-                let currentContent = [];
-                let sha = null;
-
-                if (response.ok) {
-                    const data = await response.json();
-                    currentContent = JSON.parse(atob(data.content));
-                    sha = data.sha;
-                }
-
-                // Połącz lokalne licencje z tymi z GitHub
-                const mergedLicenses = mergeLicenses(currentContent, licenses);
-                
-                // Zapisz z powrotem do GitHub
-                const updateResponse = await fetch('https://api.github.com/repos/ehrlevik/license-server/contents/licenses.json', {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: `Auto-sync licenses: ${new Date().toISOString()}`,
-                        content: btoa(JSON.stringify(mergedLicenses, null, 2)),
-                        sha: sha
-                    })
-                });
-
-                if (updateResponse.ok) {
-                    showGitHubStatus('✅ Licencje zsynchronizowane z GitHub!', 'success');
-                    // Zapisz token lokalnie
-                    localStorage.setItem('githubToken', token);
-                } else {
-                    const error = await updateResponse.json();
-                    showGitHubStatus(`❌ Błąd synchronizacji: ${error.message}`, 'error');
-                }
-            } catch (error) {
-                showGitHubStatus(`❌ Błąd: ${error.message}`, 'error');
-            }
-        }
-
-        // Funkcja do łączenia licencji
-        function mergeLicenses(githubLicenses, localLicenses) {
-            const merged = [...githubLicenses];
             
-            localLicenses.forEach(localLicense => {
-                const existingIndex = merged.findIndex(lic => lic.key === localLicense.key);
-                if (existingIndex === -1) {
-                    // Nowa licencja - dodaj
-                    merged.push(localLicense);
-                } else {
-                    // Aktualizuj istniejącą licencję
-                    merged[existingIndex] = localLicense;
-                }
+            console.log('Wysyłane dane:', {
+                type: type,
+                days: daysMap[type],
+                customer_name: customerName,
+                customer_email: customerEmail
             });
             
-            return merged;
-        }
-
-        // Funkcja do pobierania licencji z GitHub
-        async function loadFromGitHub() {
-            showGitHubStatus('📥 Pobieranie licencji z GitHub...', 'info');
-
-            try {
-                const response = await fetch('https://raw.githubusercontent.com/ehrlevik/license-server/main/licenses.json');
-                
-                if (response.ok) {
-                    const githubLicenses = await response.json();
-                    licenses = githubLicenses;
-                    localStorage.setItem('licenses', JSON.stringify(licenses));
-                    showGitHubStatus('✅ Pobrano licencje z GitHub!', 'success');
+            fetch('/api/licenses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: type,
+                    days: daysMap[type],
+                    customer_name: customerName,
+                    customer_email: customerEmail
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Błąd sieci: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Nowa licencja utworzona: ${data.license_key}`, 'success');
                     loadLicenses();
                 } else {
-                    showGitHubStatus('❌ Błąd pobierania z GitHub', 'error');
+                    showNotification('Błąd tworzenia licencji: ' + (data.error || 'Nieznany błąd'), 'error');
                 }
-            } catch (error) {
-                showGitHubStatus(`❌ Błąd: ${error.message}`, 'error');
-            }
+            })
+            .catch(error => {
+                console.error('Błąd:', error);
+                showNotification('Błąd tworzenia licencji: ' + error.message, 'error');
+            });
+        });
+
+        // Dezaktywacja licencji
+        function openDeactivateModal(licenseKey) {
+            currentLicenseKey = licenseKey;
+            document.getElementById('deactivateModal').style.display = 'block';
         }
 
-        // Testowanie połączenia z GitHub
-        async function testGitHubConnection() {
-            const token = document.getElementById('githubToken')?.value;
+        function closeModal() {
+            document.getElementById('deactivateModal').style.display = 'none';
+            currentLicenseKey = null;
+            document.getElementById('deactivationReason').value = '';
+        }
+
+        function confirmDeactivate() {
+            const reason = document.getElementById('deactivationReason').value;
             
-            if (!token) {
-                showGitHubStatus('❌ Wprowadź GitHub Token', 'error');
+            if (!reason) {
+                showNotification('Proszę podać powód dezaktywacji', 'error');
                 return;
             }
-
-            showGitHubStatus('🔗 Testowanie połączenia...', 'info');
-
-            try {
-                const response = await fetch('https://api.github.com/user', {
-                    headers: {
-                        'Authorization': `token ${token}`
-                    }
-                });
-
-                if (response.ok) {
-                    const userData = await response.json();
-                    showGitHubStatus(`✅ Połączenie OK! Witaj ${userData.login}`, 'success');
-                    localStorage.setItem('githubToken', token);
+            
+            fetch(`/api/licenses/${currentLicenseKey}/deactivate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Licencja dezaktywowana', 'success');
+                    closeModal();
+                    loadLicenses();
                 } else {
-                    showGitHubStatus('❌ Błędny token', 'error');
+                    showNotification('Błąd dezaktywacji', 'error');
                 }
-            } catch (error) {
-                showGitHubStatus(`❌ Błąd: ${error.message}`, 'error');
-            }
+            })
+            .catch(error => {
+                console.error('Błąd:', error);
+                showNotification('Błąd dezaktywacji', 'error');
+            });
         }
 
-        function showGitHubStatus(message, type) {
-            const statusDiv = document.getElementById('githubStatus');
-            statusDiv.innerHTML = `<div class="github-status github-${type}">${message}</div>`;
-        }
-
-        function generateLicense() {
-            const productName = document.getElementById('productName').value;
-            const customerName = document.getElementById('customerName').value;
-            const licenseType = document.getElementById('licenseType').value;
-
-            if (!productName || !customerName) {
-                showError('Wypełnij wszystkie pola!');
-                return;
-            }
-
-            const licenseKey = generateKey();
-            const expirationDate = getExpirationDate(licenseType);
-
-            currentLicense = {
-                id: Date.now().toString(),
-                product: productName,
-                customer: customerName,
-                type: licenseType,
-                key: licenseKey,
-                issueDate: new Date().toISOString().split('T')[0],
-                expirationDate: expirationDate,
-                status: 'active'
-            };
-
-            licenses.push(currentLicense);
-            localStorage.setItem('licenses', JSON.stringify(licenses));
-
-            document.getElementById('licenseResult').innerHTML = `
-                <div class="success">
-                    <h3>✅ Licencja wygenerowana!</h3>
-                    <div class="license-key">${licenseKey}</div>
-                    <p><strong>Produkt:</strong> ${productName}</p>
-                    <p><strong>Klient:</strong> ${customerName}</p>
-                    <p><strong>Typ:</strong> ${getLicenseTypeName(licenseType)}</p>
-                    <p><strong>Ważna do:</strong> ${expirationDate}</p>
-                    <button onclick="copyLicense()">📋 Kopiuj klucz</button>
-                    <button onclick="syncToGitHub()" style="background: #28a745;">📤 Wyślij do GitHub</button>
-                </div>
-            `;
-
-            // Wyczyść formularz
-            document.getElementById('productName').value = '';
-            document.getElementById('customerName').value = '';
-        }
-
-        function generateKey() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let key = '';
-            for (let i = 0; i < 16; i++) {
-                key += chars.charAt(Math.floor(Math.random() * chars.length));
-                if ((i + 1) % 4 === 0 && i !== 15) key += '-';
-            }
-            return key;
-        }
-
-        function getExpirationDate(licenseType) {
-            if (licenseType === 'lifetime') {
-                return 'NIEKOŃCZĄCA SIĘ';
-            }
+        // Aktywacja licencji
+        function activateLicense(licenseKey) {
+            if (!confirm('Czy na pewno chcesz aktywować tę licencję?')) return;
             
-            const today = new Date();
-            let expiration = new Date();
-            switch(licenseType) {
-                case 'trial': expiration.setDate(today.getDate() + 30); break;
-            }
-            return expiration.toISOString().split('T')[0];
+            fetch(`/api/licenses/${licenseKey}/activate`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Licencja aktywowana', 'success');
+                    loadLicenses();
+                } else {
+                    showNotification('Błąd aktywacji', 'error');
+                }
+            })
+            .catch(error => {a
+                console.error('Błąd:', error);
+                showNotification('Błąd aktywacji', 'error');
+            });
         }
 
-        function getLicenseTypeName(licenseType) {
-            const names = {
-                'trial': 'Trial (30 dni)',
-                'lifetime': 'Lifetime (dożywotnia) ⭐'
-            };
-            return names[licenseType] || licenseType;
-        }
-
-        function getLicenseBadge(licenseType) {
-            if (licenseType === 'lifetime') return '<span class="badge badge-lifetime">LIFETIME</span>';
-            if (licenseType === 'trial') return '<span class="badge badge-trial">TRIAL</span>';
-            return '';
-        }
-
-        function loadLicenses() {
-            const container = document.getElementById('licensesList');
-            if (licenses.length === 0) {
-                container.innerHTML = '<p>Brak licencji</p>';
-                return;
-            }
-
-            container.innerHTML = licenses.map(license => `
-                <div class="license-card ${license.type === 'lifetime' ? 'lifetime' : ''} ${license.status === 'deactivated' ? 'deactivated' : ''}">
-                    <h3>${license.product} ${getLicenseBadge(license.type)}</h3>
-                    <p><strong>Klient:</strong> ${license.customer}</p>
-                    <div class="license-key">${license.key}</div>
-                    <p><strong>Typ:</strong> ${getLicenseTypeName(license.type)}</p>
-                    <p><strong>Status:</strong> ${license.status}</p>
-                    <p><strong>Wygasa:</strong> ${license.expirationDate}</p>
-                    <div style="margin-top: 10px;">
-                        ${license.status === 'active' ? 
-                            `<button onclick="deactivateLicense('${license.key}')" style="background: #dc3545;">🚫 Dezaktywuj</button>` :
-                            `<button onclick="activateLicense('${license.key}')" style="background: #28a745;">✅ Aktywuj</button>`
-                        }
-                        <button onclick="copyKey('${license.key}')">📋 Kopiuj</button>
-                        <button onclick="deleteLicense('${license.key}')" style="background: #6c757d;">🗑️ Usuń</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function deactivateLicense(key) {
-            if (confirm('Dezaktywować licencję?')) {
-                const license = licenses.find(l => l.key === key);
-                if (license) license.status = 'deactivated';
-                localStorage.setItem('licenses', JSON.stringify(licenses));
-                loadLicenses();
-                showSuccess('Licencja dezaktywowana!');
-            }
-        }
-
-        function activateLicense(key) {
-            const license = licenses.find(l => l.key === key);
-            if (license) license.status = 'active';
-            localStorage.setItem('licenses', JSON.stringify(licenses));
-            loadLicenses();
-            showSuccess('Licencja aktywowana!');
-        }
-
-        function deleteLicense(key) {
-            if (confirm('Usunąć licencję?')) {
-                licenses = licenses.filter(l => l.key !== key);
-                localStorage.setItem('licenses', JSON.stringify(licenses));
-                loadLicenses();
-                showSuccess('Licencja usunięta!');
-            }
-        }
-
-        function verifyLicense() {
-            const key = document.getElementById('verifyKey').value;
-            const license = licenses.find(l => l.key === key);
-            const resultDiv = document.getElementById('verifyResult');
-
-            if (!license) {
-                resultDiv.innerHTML = `<div class="error">❌ Licencja nie znaleziona</div>`;
-                return;
-            }
-
-            const isExpired = license.type !== 'lifetime' && new Date(license.expirationDate) < new Date();
-
-            if (license.status === 'deactivated') {
-                resultDiv.innerHTML = `
-                    <div class="error">
-                        🚫 LICENCJA DEZAKTYWOWANA<br>
-                        📞 Skontaktuj się ze sprzedawcą<br>
-                        🔑 Klucz: ${license.key}
-                    </div>
-                `;
-            } else if (isExpired) {
-                resultDiv.innerHTML = `<div class="error">⚠️ Licencja wygasła</div>`;
-            } else {
-                const lifetimeBadge = license.type === 'lifetime' ? '⭐ LIFETIME LICENSE ⭐' : '';
-                resultDiv.innerHTML = `
-                    <div class="success">
-                        ✅ LICENCJA POPRAWNA ${lifetimeBadge}<br>
-                        📦 ${license.product}<br>
-                        👤 ${license.customer}<br>
-                        📅 ${license.type === 'lifetime' ? 'DOŻYWOTNIA' : 'Ważna do: ' + license.expirationDate}
-                    </div>
-                `;
-            }
-        }
-
-        function copyLicense() {
-            if (currentLicense) {
-                navigator.clipboard.writeText(currentLicense.key);
-                showSuccess('Klucz skopiowany!');
-            }
-        }
-
-        function copyKey(key) {
-            navigator.clipboard.writeText(key);
-            showSuccess('Klucz skopiowany!');
-        }
-
-        function showSuccess(message) {
-            alert('✅ ' + message);
-        }
-
-        function showError(message) {
-            alert('❌ ' + message);
+        // Usuwanie licencji
+        function deleteLicense(licenseKey) {
+            if (!confirm('CZY NA PEWNO CHCESZ USUNĄĆ TĘ LICENCJĘ?\n\nTej operacji nie można cofnąć!')) return;
+            
+            fetch(`/api/licenses/${licenseKey}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Licencja usunięta', 'success');
+                    loadLicenses();
+                } else {
+                    showNotification('Błąd usuwania', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Błąd:', error);
+                showNotification('Błąd usuwania', 'error');
+            });
         }
 
         // Inicjalizacja
-        loadLicenses();
-        
-        // Spróbuj załadować token z localStorage
-        const savedToken = localStorage.getItem('githubToken');
-        if (savedToken && document.getElementById('githubToken')) {
-            document.getElementById('githubToken').value = savedToken;
-        }
+        document.addEventListener('DOMContentLoaded', loadLicenses);
     </script>
 </body>
 </html>

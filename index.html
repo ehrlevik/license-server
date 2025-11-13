@@ -34,6 +34,7 @@
         .notification.error { background: #e74c3c; }
         .hidden { display: none; }
         .export-buttons { margin: 20px 0; }
+        .simple-form { max-width: 400px; }
     </style>
 </head>
 <body>
@@ -45,7 +46,7 @@
 
         <div class="notification" id="notification"></div>
 
-        <div class="card">
+        <div class="card simple-form">
             <h2>Utwórz Nową Licencję</h2>
             <form id="createLicenseForm">
                 <div class="form-group">
@@ -55,15 +56,6 @@
                         <option value="30dni" selected>30 dni</option>
                         <option value="lifetime">Lifetime</option>
                     </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Imię klienta:</label>
-                    <input type="text" id="customerName" placeholder="Wprowadź imię klienta" required>
-                </div>
-                <div class="form-group">
-                    <label>Email klienta:</label>
-                    <input type="email" id="customerEmail" placeholder="Wprowadź email klienta" required>
                 </div>
                 
                 <button type="submit" class="btn btn-primary">Utwórz Licencję</button>
@@ -84,7 +76,6 @@
                     <tr>
                         <th>Klucz Licencji</th>
                         <th>Typ</th>
-                        <th>Klient</th>
                         <th>Status</th>
                         <th>Data Utworzenia</th>
                         <th>Ważna do</th>
@@ -192,7 +183,6 @@
                 row.innerHTML = `
                     <td><strong class="license-key">${license.license_key}</strong></td>
                     <td>${license.type} (${license.days === 9999 ? 'Lifetime' : license.days + ' dni'})</td>
-                    <td>${license.customer_name}<br><small>${license.customer_email}</small></td>
                     <td class="${license.active ? 'status-active' : 'status-inactive'}">
                         ${license.active ? 'AKTYWNA' : 'DEZAKTYWOWANA'}
                         ${license.deactivation_reason ? `<br><small>Powód: ${license.deactivation_reason}</small>` : ''}
@@ -231,8 +221,6 @@
             e.preventDefault();
             
             const type = document.getElementById('licenseType').value;
-            const customerName = document.getElementById('customerName').value;
-            const customerEmail = document.getElementById('customerEmail').value;
             
             // Mapowanie typu na dni
             const daysMap = {
@@ -241,17 +229,12 @@
                 'lifetime': 9999
             };
             
-            if (!type || !customerName || !customerEmail) {
-                showNotification('Wszystkie pola są wymagane', 'error');
-                return;
-            }
-            
             const newLicense = {
                 license_key: generateLicenseKey(),
                 type: type,
                 days: daysMap[type],
-                customer_name: customerName,
-                customer_email: customerEmail,
+                customer_name: 'Nie podano',
+                customer_email: 'niepodano@example.com',
                 active: true,
                 created_at: new Date().toISOString(),
                 activated_at: null,
@@ -263,7 +246,6 @@
             
             if (saveLicensesToStorage()) {
                 showNotification(`Nowa licencja utworzona: ${newLicense.license_key}`, 'success');
-                document.getElementById('createLicenseForm').reset();
                 loadLicenses();
             } else {
                 showNotification('Błąd zapisywania licencji', 'error');

@@ -33,6 +33,7 @@
         .notification.success { background: #27ae60; }
         .notification.error { background: #e74c3c; }
         .hidden { display: none; }
+        .export-buttons { margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -56,14 +57,13 @@
                     </select>
                 </div>
                 
-                <!-- Ukryte pola wymagane przez backend -->
-                <div class="form-group hidden">
+                <div class="form-group">
                     <label>Imię klienta:</label>
-                    <input type="text" id="customerName" value="Nie podano" required>
+                    <input type="text" id="customerName" placeholder="Wprowadź imię klienta" required>
                 </div>
-                <div class="form-group hidden">
+                <div class="form-group">
                     <label>Email klienta:</label>
-                    <input type="email" id="customerEmail" value="niepodano@example.com" required>
+                    <input type="email" id="customerEmail" placeholder="Wprowadź email klienta" required>
                 </div>
                 
                 <button type="submit" class="btn btn-primary">Utwórz Licencję</button>
@@ -71,6 +71,12 @@
         </div>
 
         <div class="card">
+            <div class="export-buttons">
+                <button class="btn btn-info" onclick="exportLicenses()">Eksportuj Licencje</button>
+                <button class="btn btn-warning" onclick="importLicenses()">Importuj Licencje</button>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
+            </div>
+
             <h2>Lista Licencji</h2>
             <div id="loading">Ładowanie licencji...</div>
             <table id="licensesTable" style="display: none;">
@@ -78,9 +84,10 @@
                     <tr>
                         <th>Klucz Licencji</th>
                         <th>Typ</th>
+                        <th>Klient</th>
                         <th>Status</th>
-                        <th>Data Aktywacji</th>
-                        <th>Ostatnie Sprawdzenie</th>
+                        <th>Data Utworzenia</th>
+                        <th>Ważna do</th>
                         <th>Akcje</th>
                     </tr>
                 </thead>
@@ -103,7 +110,54 @@
     </div>
 
     <script>
+        // Klucz do localStorage
+        const STORAGE_KEY = 'license_system_data';
         let currentLicenseKey = null;
+        let licenses = [];
+
+        // Funkcje do zarządzania danymi w localStorage
+        function loadLicensesFromStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    licenses = JSON.parse(stored);
+                }
+                return licenses;
+            } catch (error) {
+                console.error('Błąd wczytywania z localStorage:', error);
+                return [];
+            }
+        }
+
+        function saveLicensesToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(licenses));
+                return true;
+            } catch (error) {
+                console.error('Błąd zapisywania do localStorage:', error);
+                return false;
+            }
+        }
+
+        // Funkcja do generowania klucza licencji
+        function generateLicenseKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 16; i++) {
+                if (i > 0 && i % 4 === 0) result += '-';
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // Funkcja do obliczania daty wygaśnięcia
+        function calculateExpirationDate(createdDate, days) {
+            if (days === 9999) return 'NIEKOŃCZĄCA';
+            
+            const date = new Date(createdDate);
+            date.setDate(date.getDate() + days);
+            return date.toLocaleDateString('pl-PL');
+        }
 
         // Funkcja do wyświetlania powiadomień
         function showNotification(message, type) {
@@ -117,45 +171,47 @@
             }, 5000);
         }
 
-        // Ładowanie licencji
+        // Ładowanie i wyświetlanie licencji
         function loadLicenses() {
-            fetch('/api/licenses')
-                .then(response => response.json())
-                .then(licenses => {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('licensesTable').style.display = 'table';
-                    
-                    const tbody = document.getElementById('licensesTableBody');
-                    tbody.innerHTML = '';
-                    
-                    licenses.forEach(license => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td><strong class="license-key">${license.license_key}</strong></td>
-                            <td>${license.type} (${license.days === 9999 ? 'Lifetime' : license.days + ' dni'})</td>
-                            <td class="${license.active ? 'status-active' : 'status-inactive'}">
-                                ${license.active ? 'AKTYWNA' : 'DEZAKTYWOWANA'}
-                            </td>
-                            <td>${license.activated_at ? new Date(license.activated_at).toLocaleDateString('pl-PL') : 'Nieaktywowana'}</td>
-                            <td>${license.last_check ? new Date(license.last_check).toLocaleString('pl-PL') : 'Nigdy'}</td>
-                            <td>
-                                <div class="actions-column">
-                                    <button class="btn btn-info" onclick="copyLicenseKey('${license.license_key}')">Skopiuj klucz</button>
-                                    ${license.active ? 
-                                        `<button class="btn btn-warning" onclick="openDeactivateModal('${license.license_key}')">Dezaktywuj</button>` :
-                                        `<button class="btn btn-success" onclick="activateLicense('${license.license_key}')">Aktywuj</button>`
-                                    }
-                                    <button class="btn btn-danger" onclick="deleteLicense('${license.license_key}')">Usuń</button>
-                                </div>
-                            </td>
-                        `;
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error('Błąd ładowania licencji:', error);
-                    document.getElementById('loading').innerHTML = 'Błąd ładowania danych';
-                });
+            licenses = loadLicensesFromStorage();
+            
+            document.getElementById('loading').style.display = 'none';
+            const table = document.getElementById('licensesTable');
+            table.style.display = licenses.length > 0 ? 'table' : 'none';
+            
+            const tbody = document.getElementById('licensesTableBody');
+            tbody.innerHTML = '';
+            
+            if (licenses.length === 0) {
+                document.getElementById('loading').innerHTML = 'Brak licencji. Utwórz pierwszą licencję!';
+                return;
+            }
+            
+            licenses.forEach(license => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong class="license-key">${license.license_key}</strong></td>
+                    <td>${license.type} (${license.days === 9999 ? 'Lifetime' : license.days + ' dni'})</td>
+                    <td>${license.customer_name}<br><small>${license.customer_email}</small></td>
+                    <td class="${license.active ? 'status-active' : 'status-inactive'}">
+                        ${license.active ? 'AKTYWNA' : 'DEZAKTYWOWANA'}
+                        ${license.deactivation_reason ? `<br><small>Powód: ${license.deactivation_reason}</small>` : ''}
+                    </td>
+                    <td>${new Date(license.created_at).toLocaleDateString('pl-PL')}</td>
+                    <td>${calculateExpirationDate(license.created_at, license.days)}</td>
+                    <td>
+                        <div class="actions-column">
+                            <button class="btn btn-info" onclick="copyLicenseKey('${license.license_key}')">Skopiuj</button>
+                            ${license.active ? 
+                                `<button class="btn btn-warning" onclick="openDeactivateModal('${license.license_key}')">Dezaktywuj</button>` :
+                                `<button class="btn btn-success" onclick="activateLicense('${license.license_key}')">Aktywuj</button>`
+                            }
+                            <button class="btn btn-danger" onclick="deleteLicense('${license.license_key}')">Usuń</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
         }
 
         // Kopiowanie klucza licencji
@@ -178,54 +234,40 @@
             const customerName = document.getElementById('customerName').value;
             const customerEmail = document.getElementById('customerEmail').value;
             
-            // Mapowanie typu na dni - POPRAWIONE
+            // Mapowanie typu na dni
             const daysMap = {
                 '14dni': 14,
                 '30dni': 30,
                 'lifetime': 9999
             };
             
-            // Sprawdź czy wszystkie pola są wypełnione
             if (!type || !customerName || !customerEmail) {
                 showNotification('Wszystkie pola są wymagane', 'error');
                 return;
             }
             
-            console.log('Wysyłane dane:', {
+            const newLicense = {
+                license_key: generateLicenseKey(),
                 type: type,
                 days: daysMap[type],
                 customer_name: customerName,
-                customer_email: customerEmail
-            });
+                customer_email: customerEmail,
+                active: true,
+                created_at: new Date().toISOString(),
+                activated_at: null,
+                last_check: null,
+                deactivation_reason: null
+            };
             
-            fetch('/api/licenses', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: type,
-                    days: daysMap[type],
-                    customer_name: customerName,
-                    customer_email: customerEmail
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Błąd sieci: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    showNotification(`Nowa licencja utworzona: ${data.license_key}`, 'success');
-                    loadLicenses();
-                } else {
-                    showNotification('Błąd tworzenia licencji: ' + (data.error || 'Nieznany błąd'), 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Błąd:', error);
-                showNotification('Błąd tworzenia licencji: ' + error.message, 'error');
-            });
+            licenses.push(newLicense);
+            
+            if (saveLicensesToStorage()) {
+                showNotification(`Nowa licencja utworzona: ${newLicense.license_key}`, 'success');
+                document.getElementById('createLicenseForm').reset();
+                loadLicenses();
+            } else {
+                showNotification('Błąd zapisywania licencji', 'error');
+            }
         });
 
         // Dezaktywacja licencji
@@ -248,70 +290,109 @@
                 return;
             }
             
-            fetch(`/api/licenses/${currentLicenseKey}/deactivate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason: reason })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
+            const license = licenses.find(l => l.license_key === currentLicenseKey);
+            if (license) {
+                license.active = false;
+                license.deactivation_reason = reason;
+                
+                if (saveLicensesToStorage()) {
                     showNotification('Licencja dezaktywowana', 'success');
                     closeModal();
                     loadLicenses();
                 } else {
-                    showNotification('Błąd dezaktywacji', 'error');
+                    showNotification('Błąd zapisywania', 'error');
                 }
-            })
-            .catch(error => {
-                console.error('Błąd:', error);
-                showNotification('Błąd dezaktywacji', 'error');
-            });
+            }
         }
 
         // Aktywacja licencji
         function activateLicense(licenseKey) {
             if (!confirm('Czy na pewno chcesz aktywować tę licencję?')) return;
             
-            fetch(`/api/licenses/${licenseKey}/activate`, {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
+            const license = licenses.find(l => l.license_key === licenseKey);
+            if (license) {
+                license.active = true;
+                license.deactivation_reason = null;
+                license.activated_at = new Date().toISOString();
+                
+                if (saveLicensesToStorage()) {
                     showNotification('Licencja aktywowana', 'success');
                     loadLicenses();
                 } else {
-                    showNotification('Błąd aktywacji', 'error');
+                    showNotification('Błąd zapisywania', 'error');
                 }
-            })
-            .catch(error => {a
-                console.error('Błąd:', error);
-                showNotification('Błąd aktywacji', 'error');
-            });
+            }
         }
 
         // Usuwanie licencji
         function deleteLicense(licenseKey) {
             if (!confirm('CZY NA PEWNO CHCESZ USUNĄĆ TĘ LICENCJĘ?\n\nTej operacji nie można cofnąć!')) return;
             
-            fetch(`/api/licenses/${licenseKey}`, {
-                method: 'DELETE'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification('Licencja usunięta', 'success');
-                    loadLicenses();
-                } else {
-                    showNotification('Błąd usuwania', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Błąd:', error);
+            licenses = licenses.filter(l => l.license_key !== licenseKey);
+            
+            if (saveLicensesToStorage()) {
+                showNotification('Licencja usunięta', 'success');
+                loadLicenses();
+            } else {
                 showNotification('Błąd usuwania', 'error');
-            });
+            }
         }
+
+        // Eksport licencji
+        function exportLicenses() {
+            const dataStr = JSON.stringify(licenses, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `licencje_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            showNotification('Licencje wyeksportowane', 'success');
+        }
+
+        // Import licencji
+        function importLicenses() {
+            document.getElementById('importFile').click();
+        }
+
+        document.getElementById('importFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedLicenses = JSON.parse(e.target.result);
+                    
+                    if (!Array.isArray(importedLicenses)) {
+                        throw new Error('Nieprawidłowy format pliku');
+                    }
+                    
+                    // Sprawdź czy mają wymagane pola
+                    const requiredFields = ['license_key', 'type', 'days', 'customer_name'];
+                    const isValid = importedLicenses.every(license => 
+                        requiredFields.every(field => license.hasOwnProperty(field))
+                    );
+                    
+                    if (!isValid) {
+                        throw new Error('Plik nie zawiera wymaganych pól licencji');
+                    }
+                    
+                    if (confirm(`Zaimportować ${importedLicenses.length} licencji?`)) {
+                        licenses = importedLicenses;
+                        if (saveLicensesToStorage()) {
+                            showNotification(`Zaimportowano ${importedLicenses.length} licencji`, 'success');
+                            loadLicenses();
+                        }
+                    }
+                } catch (error) {
+                    showNotification('Błąd importu: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // Reset input
+        });
 
         // Inicjalizacja
         document.addEventListener('DOMContentLoaded', loadLicenses);
